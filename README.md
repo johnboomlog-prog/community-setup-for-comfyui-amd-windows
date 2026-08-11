@@ -22,7 +22,7 @@ The interface automatically starts in Chinese on Chinese Windows installations a
 
 The initial GUI automates the Windows-native ROCm route. For WSL ROCm, DirectML, custom-node failures, or upstream compatibility-page changes, it preserves machine-readable reports that can be handed to Codex, Claude Code, Cursor, or another capable agent. Vibe Coding is therefore optional, not required.
 
-This is an unofficial community project and is not affiliated with, endorsed by, or sponsored by ComfyUI, AMD, Microsoft, or OpenAI. Its original node-path icon does not reuse their logos or wordmarks. Product names are used only to describe compatibility and purpose.
+This is an unofficial community project and is not affiliated with, endorsed by, or sponsored by ComfyUI, AMD, Microsoft, or OpenAI. Its red block-A community icon does not reuse official logo artwork or wordmarks. Product names are used only to describe compatibility and purpose.
 
 ## Safety principles
 
@@ -35,7 +35,7 @@ This is an unofficial community project and is not affiliated with, endorsed by,
 
 ## Install as a Codex marketplace plugin
 
-Clone [johnboomlog-prog/amd-comfyui-codex-marketplace](https://github.com/johnboomlog-prog/amd-comfyui-codex-marketplace), then add its root as a local marketplace:
+Clone [johnboomlog-prog/community-setup-for-comfyui-amd-windows](https://github.com/johnboomlog-prog/community-setup-for-comfyui-amd-windows), then add its root as a local marketplace:
 
 ```powershell
 codex plugin marketplace add <path-to-this-repository>

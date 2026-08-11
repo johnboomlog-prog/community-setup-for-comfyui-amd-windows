@@ -6,8 +6,8 @@
     "name": "johnboomlog-prog",
     "url": "https://github.com/johnboomlog-prog"
   },
-  "homepage": "https://github.com/johnboomlog-prog/amd-comfyui-codex-marketplace",
-  "repository": "https://github.com/johnboomlog-prog/amd-comfyui-codex-marketplace",
+  "homepage": "https://github.com/johnboomlog-prog/community-setup-for-comfyui-amd-windows",
+  "repository": "https://github.com/johnboomlog-prog/community-setup-for-comfyui-amd-windows",
   "license": "MIT",
   "keywords": ["comfyui", "amd", "radeon", "rocm", "windows", "ai"],
   "skills": "./skills/",
