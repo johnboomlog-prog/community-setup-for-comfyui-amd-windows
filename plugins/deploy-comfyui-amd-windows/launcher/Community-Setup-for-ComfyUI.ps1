@@ -11,7 +11,7 @@ $hostPath = Join-Path $reportRoot 'amd-comfyui-host.json'
 $routePath = Join-Path $reportRoot 'amd-comfyui-route.json'
 $planPath = Join-Path $reportRoot 'amd-comfyui-install-plan.json'
 $logPath = Join-Path $reportRoot 'wizard.log'
-$requiredFiles = @('inspect-host.ps1','select-deployment-route.ps1','new-official-plan.ps1','invoke-bootstrap.ps1') | ForEach-Object { Join-Path $scriptsRoot $_ }
+$requiredFiles = @('inspect-host.ps1','select-deployment-route.ps1','new-official-plan.ps1','set-pagefile.ps1','invoke-bootstrap.ps1') | ForEach-Object { Join-Path $scriptsRoot $_ }
 $missingFiles = @($requiredFiles | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
 
 if ($SelfTest) {
@@ -58,6 +58,35 @@ function New-StepArrow {
     $arrow.ForeColor = [Drawing.Color]::FromArgb(107,114,128)
     $arrow
 }
+function Invoke-PageFileChange([ValidateSet('AutomaticManaged','Custom')][string]$Mode) {
+    if (-not (Test-Path -LiteralPath $planPath)) { [Windows.Forms.MessageBox]::Show('请先完成 STEP 3，生成部署计划。'); return }
+    $plan = Read-Json $planPath
+    if ($Mode -eq 'Custom' -and (-not $script:PageFileDrive -or -not $script:PageFileRecommendedGB)) {
+        [Windows.Forms.MessageBox]::Show('没有找到可安全容纳推荐虚拟内存的 NTFS/ReFS 磁盘。请先释放空间或选择 Windows 自动管理。'); return
+    }
+    $detail = if ($Mode -eq 'AutomaticManaged') {
+        '启用 Windows 自动管理虚拟内存。Windows 将决定容量和放置位置。'
+    } else {
+        "在 $($script:PageFileDrive) 创建或更新固定虚拟内存：$($script:PageFileRecommendedGB) GB。其他盘符已有的虚拟内存会保留。"
+    }
+    $message = "为什么需要：模型加载、VAE、超分和视频帧会占用大量提交内存；不足时可能报错或直接退出。`r`n`r`n即将执行：$detail`r`n`r`n该操作需要管理员权限，完成后必须重启。是否继续？"
+    if ([Windows.Forms.MessageBox]::Show($message,'确认虚拟内存配置','YesNo','Warning') -ne 'Yes') { return }
+    $setScript = Join-Path $scriptsRoot 'set-pagefile.ps1'
+    $command = "& $(ConvertTo-PsLiteral $setScript) -PlanPath $(ConvertTo-PsLiteral $planPath) -Mode $Mode -ConfirmPageFileChange -Confirm:`$false"
+    if ($Mode -eq 'Custom') {
+        $command += " -DriveLetter $(ConvertTo-PsLiteral $script:PageFileDrive) -InitialGB $($script:PageFileRecommendedGB) -MaximumGB $($script:PageFileRecommendedGB)"
+    }
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
+    try {
+        $process = Start-Process "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -Verb RunAs -Wait -PassThru -ArgumentList "-NoLogo -NoProfile -ExecutionPolicy Bypass -EncodedCommand $encoded"
+        if ($process.ExitCode -ne 0) { throw "虚拟内存配置命令退出码：$($process.ExitCode)" }
+        Set-Stage '等待用户操作：请保存工作并重启 Windows，然后从 STEP 1 重新检测' ([Drawing.Color]::DarkOrange)
+        [Windows.Forms.MessageBox]::Show('虚拟内存配置命令已完成。请保存当前工作，手动重启 Windows；重启后重新打开向导，从 STEP 1 开始检测。','需要重启','OK','Information')
+    } catch {
+        Set-Stage '未通过：虚拟内存配置未完成' ([Drawing.Color]::Firebrick)
+        [Windows.Forms.MessageBox]::Show("虚拟内存配置失败或管理员授权被取消：`r`n$($_.Exception.Message)",'配置未完成','OK','Error')
+    }
+}
 function Set-Busy([bool]$Busy) {
     $script:TaskBusy = $Busy; $scanButton.Enabled = -not $Busy
     $routeButton.Enabled = (-not $Busy) -and (Test-Path $hostPath); $planButton.Enabled = (-not $Busy) -and (Test-Path $routePath)
@@ -92,9 +121,23 @@ function Show-PlanSummary {
     $summaryBox.Text="部署计划已生成`r`n`r`n安装目录：$($p.installRoot)`r`n工作负载：$($p.storage.workloadProfile)`r`n预计下载：$($p.storage.knownDownloadGB) GB（另有 $($p.storage.unknownArtifactCount) 个未知大小组件）`r`n硬性最低空间：$($p.storage.hardMinimumGB) GB`r`n建议安装前可用空间：$($p.storage.recommendedFreeGB) GB`r`n当前目标盘可用：$($p.storage.targetFreeGB) GB`r`n空间等级：$($p.storage.spaceLevel)`r`n`r`n内存：$($p.pageFile.ramGB) GB`r`n虚拟内存状态：$($p.pageFile.status)`r`n建议：最低 $($p.pageFile.customRange.minimumGB) GB，推荐 $($p.pageFile.customRange.recommendedGB) GB，上限建议 $($p.pageFile.customRange.maximumRecommendedGB) GB`r`n`r`n要求 Python：$($p.compatibility.requiredPython)`r`n要求 AMD 驱动：$($p.compatibility.requiredAdrenalinDriver)`r`n固定 ComfyUI 提交：$($p.comfyUI.commit)`r`n`r`n若虚拟内存不足，请先打开 Windows 高级系统设置调整并重启，再重新检测。"
     $approvalBox.Enabled=[bool]($p.compatibility.matchedInOfficialPage -and $p.storage.spaceSufficient -and $p.pageFile.status -ne 'insufficient')
     $belowSpaceBox.Enabled=[bool]($p.storage.spaceLevel -eq 'minimum-only')
+    $candidate = @($p.pageFile.targetCandidates | Where-Object { $_.canHostRecommended }) | Select-Object -First 1
+    $script:PageFileDrive = if ($candidate) { ([string]$candidate.root).TrimEnd('\') } else { $null }
+    $script:PageFileRecommendedGB = [int]$p.pageFile.customRange.recommendedGB
+    $current = if ($p.pageFile.current.automaticManaged -eq $true) { 'Windows 自动管理' } else { "$($p.pageFile.currentConfiguredMaximumGB) GB" }
+    $target = if ($candidate) { "$($script:PageFileDrive) 盘固定 $($script:PageFileRecommendedGB) GB" } else { '没有满足空间要求的目标盘' }
+    $pageFileSummary.Text = "当前：$current｜状态：$($p.pageFile.status)｜本用途最低 $($p.pageFile.customRange.minimumGB) GB，推荐 $($script:PageFileRecommendedGB) GB，上限建议 $($p.pageFile.customRange.maximumRecommendedGB) GB`r`n推荐选择：保持 Windows 自动管理，或配置到 $target。修改后必须重启并重新检测。"
+    $pageFileAutoButton.Enabled = [bool]($p.pageFile.status -in @('insufficient','minimum-only'))
+    $pageFileCustomButton.Enabled = [bool]($candidate -and $p.pageFile.status -in @('insufficient','minimum-only'))
+    $pageFileCustomButton.Text = if ($candidate) { "配置到 $($script:PageFileDrive)｜$($script:PageFileRecommendedGB) GB" } else { '没有合适的目标盘' }
+    if ($p.pageFile.status -in @('system-managed','recommended')) {
+        $pageFilePanel.BackColor = [Drawing.Color]::FromArgb(220,252,231); $pageFileTitle.ForeColor = [Drawing.Color]::FromArgb(22,101,52)
+    } else {
+        $pageFilePanel.BackColor = [Drawing.Color]::FromArgb(255,247,214); $pageFileTitle.ForeColor = [Drawing.Color]::FromArgb(154,83,0)
+    }
 }
 
-$form=[Windows.Forms.Form]::new(); $form.Text='AMD Windows 社区部署向导 for ComfyUI'; $form.StartPosition='CenterScreen'; $form.Size=[Drawing.Size]::new(1040,760); $form.MinimumSize=[Drawing.Size]::new(900,680); $form.BackColor=[Drawing.Color]::FromArgb(246,248,250); $form.Font=[Drawing.Font]::new('Microsoft YaHei UI',9)
+$form=[Windows.Forms.Form]::new(); $form.Text='AMD Windows 社区部署向导 for ComfyUI'; $form.StartPosition='CenterScreen'; $form.Size=[Drawing.Size]::new(1040,850); $form.MinimumSize=[Drawing.Size]::new(900,790); $form.BackColor=[Drawing.Color]::FromArgb(246,248,250); $form.Font=[Drawing.Font]::new('Microsoft YaHei UI',9)
 if(Test-Path $iconPath){$form.Icon=[Drawing.Icon]::new($iconPath)}
 $title=[Windows.Forms.Label]::new(); $title.Text='AMD Windows 社区部署向导 for ComfyUI'; $title.Font=[Drawing.Font]::new('Microsoft YaHei UI',19,[Drawing.FontStyle]::Bold); $title.Location=[Drawing.Point]::new(24,18); $title.AutoSize=$true; $form.Controls.Add($title)
 $subtitle=[Windows.Forms.Label]::new(); $subtitle.Text='非官方社区项目，与 ComfyUI、AMD、Microsoft 或 OpenAI 无隶属关系。无需 Codex 或 Vibe Coding。'; $subtitle.Location=[Drawing.Point]::new(28,58); $subtitle.Size=[Drawing.Size]::new(930,24); $subtitle.ForeColor=[Drawing.Color]::FromArgb(75,85,99); $form.Controls.Add($subtitle)
@@ -105,8 +148,14 @@ $browseButton=[Windows.Forms.Button]::new(); $browseButton.Text='选择…'; $br
 $profileLabel=[Windows.Forms.Label]::new(); $profileLabel.Text='用途'; $profileLabel.Location=[Drawing.Point]::new(18,72); $profileLabel.AutoSize=$true; $settings.Controls.Add($profileLabel)
 $profileBox=[Windows.Forms.ComboBox]::new(); $profileBox.DropDownStyle='DropDownList'; [void]$profileBox.Items.AddRange(@('入门图片（建议至少 120 GB）','图片生产（建议至少 250 GB）','视频生产（建议至少 600 GB）')); $profileBox.SelectedIndex=0; $profileBox.Location=[Drawing.Point]::new(86,68); $profileBox.Size=[Drawing.Size]::new(260,26); $settings.Controls.Add($profileBox)
 $prereqBox=[Windows.Forms.CheckBox]::new(); $prereqBox.Text='缺少时允许安装 Python、Git、VC++ 运行库'; $prereqBox.Checked=$true; $prereqBox.Location=[Drawing.Point]::new(380,68); $prereqBox.Size=[Drawing.Size]::new(320,26); $settings.Controls.Add($prereqBox)
-$stepHint=[Windows.Forms.Label]::new(); $stepHint.Text='操作提示：按箭头顺序，单击当前蓝色步骤一次；等待按钮变绿后，再点击下一步。'; $stepHint.Location=[Drawing.Point]::new(28,213); $stepHint.Size=[Drawing.Size]::new(930,22); $stepHint.ForeColor=[Drawing.Color]::FromArgb(75,85,99); $form.Controls.Add($stepHint)
-$actions=[Windows.Forms.FlowLayoutPanel]::new(); $actions.Location=[Drawing.Point]::new(24,237); $actions.Size=[Drawing.Size]::new(970,42); $actions.Anchor='Top,Left,Right'; $form.Controls.Add($actions)
+$pageFilePanel=[Windows.Forms.Panel]::new(); $pageFilePanel.Location=[Drawing.Point]::new(24,212); $pageFilePanel.Size=[Drawing.Size]::new(970,92); $pageFilePanel.Anchor='Top,Left,Right'; $pageFilePanel.BorderStyle='FixedSingle'; $pageFilePanel.BackColor=[Drawing.Color]::FromArgb(255,247,214); $form.Controls.Add($pageFilePanel)
+$pageFileTitle=[Windows.Forms.Label]::new(); $pageFileTitle.Text='重要：虚拟内存决定大模型、超分与视频任务能否稳定运行'; $pageFileTitle.Location=[Drawing.Point]::new(12,8); $pageFileTitle.Size=[Drawing.Size]::new(610,22); $pageFileTitle.Font=[Drawing.Font]::new('Microsoft YaHei UI',9,[Drawing.FontStyle]::Bold); $pageFileTitle.ForeColor=[Drawing.Color]::FromArgb(154,83,0); $pageFilePanel.Controls.Add($pageFileTitle)
+$pageFileSummary=[Windows.Forms.Label]::new(); $pageFileSummary.Text='完成 STEP 3 后，这里会显示当前虚拟内存、适合本用途的最低/推荐容量，以及应该配置到哪个盘符。'; $pageFileSummary.Location=[Drawing.Point]::new(12,33); $pageFileSummary.Size=[Drawing.Size]::new(620,48); $pageFileSummary.ForeColor=[Drawing.Color]::FromArgb(92,61,0); $pageFilePanel.Controls.Add($pageFileSummary)
+$pageFileAutoButton=[Windows.Forms.Button]::new(); $pageFileAutoButton.Text='采用 Windows 自动管理'; $pageFileAutoButton.Location=[Drawing.Point]::new(650,15); $pageFileAutoButton.Size=[Drawing.Size]::new(145,29); $pageFileAutoButton.Enabled=$false; $pageFilePanel.Controls.Add($pageFileAutoButton)
+$pageFileCustomButton=[Windows.Forms.Button]::new(); $pageFileCustomButton.Text='等待容量建议'; $pageFileCustomButton.Location=[Drawing.Point]::new(805,15); $pageFileCustomButton.Size=[Drawing.Size]::new(145,29); $pageFileCustomButton.Enabled=$false; $pageFilePanel.Controls.Add($pageFileCustomButton)
+$pageFileSettingsButton=[Windows.Forms.Button]::new(); $pageFileSettingsButton.Text='仅打开 Windows 高级设置'; $pageFileSettingsButton.Location=[Drawing.Point]::new(650,50); $pageFileSettingsButton.Size=[Drawing.Size]::new(300,27); $pageFilePanel.Controls.Add($pageFileSettingsButton)
+$stepHint=[Windows.Forms.Label]::new(); $stepHint.Text='操作提示：按箭头顺序，单击当前蓝色步骤一次；等待按钮变绿后，再点击下一步。'; $stepHint.Location=[Drawing.Point]::new(28,311); $stepHint.Size=[Drawing.Size]::new(930,22); $stepHint.ForeColor=[Drawing.Color]::FromArgb(75,85,99); $form.Controls.Add($stepHint)
+$actions=[Windows.Forms.FlowLayoutPanel]::new(); $actions.Location=[Drawing.Point]::new(24,334); $actions.Size=[Drawing.Size]::new(970,42); $actions.Anchor='Top,Left,Right'; $form.Controls.Add($actions)
 $scanButton=[Windows.Forms.Button]::new(); $scanButton.Text='STEP 1  只读检测'; $scanButton.Size=[Drawing.Size]::new(135,34); $actions.Controls.Add($scanButton)
 $actions.Controls.Add((New-StepArrow))
 $routeButton=[Windows.Forms.Button]::new(); $routeButton.Text='STEP 2  官方路线'; $routeButton.Size=[Drawing.Size]::new(150,34); $routeButton.Enabled=$false; $actions.Controls.Add($routeButton)
@@ -117,16 +166,16 @@ $dryRunButton=[Windows.Forms.Button]::new(); $dryRunButton.Text='STEP 4  安装�
 $actions.Controls.Add((New-StepArrow))
 $deployButton=[Windows.Forms.Button]::new(); $deployButton.Text='STEP 5  正式安装'; $deployButton.Size=[Drawing.Size]::new(140,34); $deployButton.Enabled=$false; $actions.Controls.Add($deployButton)
 Set-StepProgress 1
-$summaryBox=[Windows.Forms.RichTextBox]::new(); $summaryBox.Location=[Drawing.Point]::new(24,290); $summaryBox.Size=[Drawing.Size]::new(620,272); $summaryBox.Anchor='Top,Bottom,Left,Right'; $summaryBox.ReadOnly=$true; $summaryBox.BackColor=[Drawing.Color]::White; $summaryBox.Text="欢迎。`r`n`r`n第一步只读取电脑配置，不下载、不安装、不修改系统。`r`n选择用途和安装目录后，点击【STEP 1  只读检测】一次并等待完成。"; $form.Controls.Add($summaryBox)
-$side=[Windows.Forms.GroupBox]::new(); $side.Text='确认与辅助'; $side.Location=[Drawing.Point]::new(658,290); $side.Size=[Drawing.Size]::new(336,272); $side.Anchor='Top,Bottom,Right'; $form.Controls.Add($side)
+$summaryBox=[Windows.Forms.RichTextBox]::new(); $summaryBox.Location=[Drawing.Point]::new(24,387); $summaryBox.Size=[Drawing.Size]::new(620,257); $summaryBox.Anchor='Top,Bottom,Left,Right'; $summaryBox.ReadOnly=$true; $summaryBox.BackColor=[Drawing.Color]::White; $summaryBox.Text="欢迎。`r`n`r`n第一步只读取电脑配置，不下载、不安装、不修改系统。`r`n选择用途和安装目录后，点击【STEP 1  只读检测】一次并等待完成。"; $form.Controls.Add($summaryBox)
+$side=[Windows.Forms.GroupBox]::new(); $side.Text='确认与辅助'; $side.Location=[Drawing.Point]::new(658,387); $side.Size=[Drawing.Size]::new(336,257); $side.Anchor='Top,Bottom,Right'; $form.Controls.Add($side)
 $approvalBox=[Windows.Forms.CheckBox]::new(); $approvalBox.Text='我已核对官方兼容结果、所需驱动、目标目录和空间，并理解安装会下载软件及模型。'; $approvalBox.Location=[Drawing.Point]::new(18,30); $approvalBox.Size=[Drawing.Size]::new(295,64); $approvalBox.Enabled=$false; $side.Controls.Add($approvalBox)
 $driverBox=[Windows.Forms.CheckBox]::new(); $driverBox.Text='所需 AMD 驱动已安装，并已按要求重启'; $driverBox.Location=[Drawing.Point]::new(18,100); $driverBox.Size=[Drawing.Size]::new(295,40); $side.Controls.Add($driverBox)
 $belowSpaceBox=[Windows.Forms.CheckBox]::new(); $belowSpaceBox.Text='空间仅达最低值时，我接受余量不足风险'; $belowSpaceBox.Location=[Drawing.Point]::new(18,143); $belowSpaceBox.Size=[Drawing.Size]::new(295,34); $belowSpaceBox.Enabled=$false; $side.Controls.Add($belowSpaceBox)
 $pageFileButton=[Windows.Forms.Button]::new(); $pageFileButton.Text='打开 Windows 高级系统设置'; $pageFileButton.Location=[Drawing.Point]::new(18,184); $pageFileButton.Size=[Drawing.Size]::new(275,30); $side.Controls.Add($pageFileButton)
 $reportsButton=[Windows.Forms.Button]::new(); $reportsButton.Text='打开报告目录'; $reportsButton.Location=[Drawing.Point]::new(18,221); $reportsButton.Size=[Drawing.Size]::new(132,30); $side.Controls.Add($reportsButton)
 $copyPromptButton=[Windows.Forms.Button]::new(); $copyPromptButton.Text='复制求助提示词'; $copyPromptButton.Location=[Drawing.Point]::new(161,221); $copyPromptButton.Size=[Drawing.Size]::new(132,30); $side.Controls.Add($copyPromptButton)
-$statusLabel=[Windows.Forms.Label]::new(); $statusLabel.Text='状态：等待只读检测'; $statusLabel.Location=[Drawing.Point]::new(28,574); $statusLabel.Size=[Drawing.Size]::new(950,24); $statusLabel.Anchor='Bottom,Left,Right'; $statusLabel.Font=[Drawing.Font]::new('Microsoft YaHei UI',9,[Drawing.FontStyle]::Bold); $form.Controls.Add($statusLabel)
-$logBox=[Windows.Forms.RichTextBox]::new(); $logBox.Location=[Drawing.Point]::new(24,602); $logBox.Size=[Drawing.Size]::new(970,98); $logBox.Anchor='Bottom,Left,Right'; $logBox.ReadOnly=$true; $logBox.BackColor=[Drawing.Color]::FromArgb(25,28,34); $logBox.ForeColor=[Drawing.Color]::Gainsboro; $logBox.Font=[Drawing.Font]::new('Consolas',8.5); $form.Controls.Add($logBox)
+$statusLabel=[Windows.Forms.Label]::new(); $statusLabel.Text='状态：等待只读检测'; $statusLabel.Location=[Drawing.Point]::new(28,654); $statusLabel.Size=[Drawing.Size]::new(950,24); $statusLabel.Anchor='Bottom,Left,Right'; $statusLabel.Font=[Drawing.Font]::new('Microsoft YaHei UI',9,[Drawing.FontStyle]::Bold); $form.Controls.Add($statusLabel)
+$logBox=[Windows.Forms.RichTextBox]::new(); $logBox.Location=[Drawing.Point]::new(24,682); $logBox.Size=[Drawing.Size]::new(970,108); $logBox.Anchor='Bottom,Left,Right'; $logBox.ReadOnly=$true; $logBox.BackColor=[Drawing.Color]::FromArgb(25,28,34); $logBox.ForeColor=[Drawing.Color]::Gainsboro; $logBox.Font=[Drawing.Font]::new('Consolas',8.5); $form.Controls.Add($logBox)
 
 $taskTimer=[Windows.Forms.Timer]::new(); $taskTimer.Interval=350
 $taskTimer.Add_Tick({
@@ -140,7 +189,9 @@ $routeButton.Add_Click({$cmd="& $(ConvertTo-PsLiteral (Join-Path $scriptsRoot 's
 $planButton.Add_Click({$r=Read-Json $routePath; if($r.selectedRoute -ne 'windows-native-rocm'){[Windows.Forms.MessageBox]::Show('第一版向导只自动部署 Windows 原生 ROCm。报告可交给智能体继续。');return}; $profile=@('StarterImage','ImageProduction','VideoProduction')[$profileBox.SelectedIndex]; $cmd="& $(ConvertTo-PsLiteral (Join-Path $scriptsRoot 'new-official-plan.ps1')) -RoutePath $(ConvertTo-PsLiteral $routePath) -InstallRoot $(ConvertTo-PsLiteral $installRootBox.Text.Trim()) -WorkloadProfile $profile -OutputPath $(ConvertTo-PsLiteral $planPath)"; Start-WizardTask '生成机器专属部署计划' $cmd {param($code) if(Test-Path $planPath){Show-PlanSummary;if($code -eq 0){Set-Stage '通过：部署计划满足基础门槛';Set-StepProgress 4}else{Set-Stage '等待处理：计划生成，但有门槛未通过' ([Drawing.Color]::DarkOrange)}}else{Set-Stage '未通过：计划生成失败' ([Drawing.Color]::Firebrick)}}})
 $dryRunButton.Add_Click({if(-not $approvalBox.Checked -or -not $driverBox.Checked){[Windows.Forms.MessageBox]::Show('请先阅读计划并完成兼容性/驱动确认。');return}; $flags='-ConfirmSupportedGpu -DriverReady -WhatIf -Confirm:$false'; if($prereqBox.Checked){$flags+=' -InstallPrerequisites'}; if($belowSpaceBox.Checked){$flags+=' -AllowBelowRecommendedSpace'}; $cmd="& $(ConvertTo-PsLiteral (Join-Path $scriptsRoot 'invoke-bootstrap.ps1')) -PlanPath $(ConvertTo-PsLiteral $planPath) $flags"; Start-WizardTask '安装试运行（不修改电脑）' $cmd {param($code) if($code -eq 0){Set-Stage '通过：试运行完成，可以开始安装';Set-StepProgress 5}else{Set-Stage '未通过：请查看日志和计划' ([Drawing.Color]::Firebrick)}}})
 $deployButton.Add_Click({if(-not $approvalBox.Checked -or -not $driverBox.Checked){[Windows.Forms.MessageBox]::Show('开始安装前必须完成两项确认。');return}; $answer=[Windows.Forms.MessageBox]::Show("即将联网下载并安装到：`r`n$($installRootBox.Text)`r`n`r`n安装可能持续较长时间。是否继续？",'最后确认','YesNo','Warning'); if($answer -ne 'Yes'){return}; $flags='-ConfirmSupportedGpu -DriverReady -Confirm:$false'; if($prereqBox.Checked){$flags+=' -InstallPrerequisites'}; if($belowSpaceBox.Checked){$flags+=' -AllowBelowRecommendedSpace'}; $cmd="& $(ConvertTo-PsLiteral (Join-Path $scriptsRoot 'invoke-bootstrap.ps1')) -PlanPath $(ConvertTo-PsLiteral $planPath) $flags"; Start-WizardTask '部署并验证 ComfyUI' $cmd {param($code) if($code -eq 0){Set-Stage '完成：ComfyUI 已部署并通过验证';Set-StepProgress 6;[Windows.Forms.MessageBox]::Show('部署与验证完成。桌面启动器已创建。')}else{Set-Stage '未完成：报告可交给智能体继续处理' ([Drawing.Color]::Firebrick)}}})
-$pageFileButton.Add_Click({Start-Process SystemPropertiesAdvanced.exe}); $reportsButton.Add_Click({Start-Process explorer.exe -ArgumentList $reportRoot})
+$pageFileButton.Add_Click({Start-Process SystemPropertiesAdvanced.exe}); $pageFileSettingsButton.Add_Click({Start-Process SystemPropertiesAdvanced.exe})
+$pageFileAutoButton.Add_Click({Invoke-PageFileChange 'AutomaticManaged'}); $pageFileCustomButton.Add_Click({Invoke-PageFileChange 'Custom'})
+$reportsButton.Add_Click({Start-Process explorer.exe -ArgumentList $reportRoot})
 $copyPromptButton.Add_Click({$prompt="请使用 deploy-comfyui-amd-windows Skill 分析 AMD ComfyUI 独立部署向导的报告并继续处理。报告目录：$reportRoot。先只读检查报告和日志，不要未经同意下载、安装或修改系统。"; [Windows.Forms.Clipboard]::SetText($prompt);Set-Stage '已复制求助提示词'})
 $form.Add_FormClosing({if($script:TaskBusy -and [Windows.Forms.MessageBox]::Show('任务仍在运行。确定关闭向导吗？','确认','YesNo','Warning') -ne 'Yes'){$_.Cancel=$true}})
 Add-Log "向导启动。报告目录：$reportRoot"; [void]$form.ShowDialog()
