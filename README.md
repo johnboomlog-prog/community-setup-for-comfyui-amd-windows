@@ -6,7 +6,19 @@ An open-source Codex plugin and portable `SKILL.md` workflow for deploying Comfy
 
 The plugin starts with read-only inspection, checks current AMD compatibility evidence, plans storage and Windows page-file capacity, selects a supported backend route, validates real ROCm computation and inference, and creates a verified desktop launcher.
 
-> Status: `0.1.0` preview. Windows-native ROCm is the most complete automated route. WSL ROCm and DirectML have decision guidance but are not yet automated to the same end-to-end level.
+> Status: `0.2.0` preview. Windows-native ROCm and the standalone GUI wizard are the most complete automated route. WSL ROCm and DirectML have decision guidance but are not yet automated to the same end-to-end level.
+
+## Standalone Windows deployment wizard
+
+Users do not need Codex, another coding agent, Python, or Node.js to start the included GUI wizard. Download or clone the repository on Windows 10/11, then double-click:
+
+```text
+plugins\deploy-comfyui-amd-windows\launcher\Start-AMD-ComfyUI-Deployment-Wizard.cmd
+```
+
+The wizard uses built-in Windows PowerShell 5.1 and follows the same safety gates as the Skill: read-only inventory first, live AMD compatibility evidence, workload/storage/page-file planning, explicit approval before downloads, a dry run, deployment, ROCm compute verification, real ComfyUI inference, and desktop-launcher creation.
+
+The initial GUI automates the Windows-native ROCm route. For WSL ROCm, DirectML, custom-node failures, or upstream compatibility-page changes, it preserves machine-readable reports that can be handed to Codex, Claude Code, Cursor, or another capable agent. Vibe Coding is therefore optional, not required.
 
 ## Safety principles
 

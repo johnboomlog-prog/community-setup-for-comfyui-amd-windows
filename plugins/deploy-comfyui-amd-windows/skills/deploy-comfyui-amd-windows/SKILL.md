@@ -9,6 +9,8 @@ Build a reproducible AMD deployment chosen from the actual host, not from a pres
 
 This directory follows the portable `SKILL.md` plus bundled resources pattern. Read [references/agent-portability.md](references/agent-portability.md) only when installing it into another coding agent.
 
+The containing plugin also ships `launcher/Start-AMD-ComfyUI-Deployment-Wizard.cmd`, a standalone Windows GUI for users without a coding agent. The launcher calls the same inspection, planning, approval-gated bootstrap, and verification scripts and writes portable reports under `%LOCALAPPDATA%\AMD-ComfyUI-Deployment-Wizard\reports`. Use those reports to resume or diagnose a launcher run when the user later asks an agent for help.
+
 ## User interaction contract
 
 Make the skill visibly interactive. On a new invocation, begin in the user's language with a short welcome that names the skill, states that phase 1 is read-only, and explains that no software or system setting will change without approval. Do not ask the user to paste another long prompt.
