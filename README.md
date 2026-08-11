@@ -18,6 +18,8 @@ plugins\deploy-comfyui-amd-windows\launcher\Start-Community-Setup-for-ComfyUI.cm
 
 The wizard uses built-in Windows PowerShell 5.1 and follows the same safety gates as the Skill: read-only inventory first, live AMD compatibility evidence, workload/storage/page-file planning, explicit approval before downloads, a dry run, deployment, ROCm compute verification, real ComfyUI inference, and desktop-launcher creation.
 
+The interface automatically starts in Chinese on Chinese Windows installations and in English elsewhere. A top-right `English / 中文` button switches the complete interface, summaries, page-file guidance, confirmations, and error messages at any time.
+
 The initial GUI automates the Windows-native ROCm route. For WSL ROCm, DirectML, custom-node failures, or upstream compatibility-page changes, it preserves machine-readable reports that can be handed to Codex, Claude Code, Cursor, or another capable agent. Vibe Coding is therefore optional, not required.
 
 This is an unofficial community project and is not affiliated with, endorsed by, or sponsored by ComfyUI, AMD, Microsoft, or OpenAI. Its original node-path icon does not reuse their logos or wordmarks. Product names are used only to describe compatibility and purpose.
