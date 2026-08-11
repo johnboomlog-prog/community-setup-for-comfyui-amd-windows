@@ -2,6 +2,7 @@
 Thumbs.db
 *.log
 *.partial
+dist/
 amd-comfyui-host.json
 amd-comfyui-route.json
 amd-comfyui-install-plan.json
