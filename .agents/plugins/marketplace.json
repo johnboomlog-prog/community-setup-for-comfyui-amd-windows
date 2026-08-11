@@ -1,0 +1,20 @@
+{
+  "name": "amd-comfyui-community",
+  "interface": {
+    "displayName": "AMD ComfyUI Community"
+  },
+  "plugins": [
+    {
+      "name": "deploy-comfyui-amd-windows",
+      "source": {
+        "source": "local",
+        "path": "./plugins/deploy-comfyui-amd-windows"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

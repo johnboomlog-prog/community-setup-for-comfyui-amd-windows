@@ -1,0 +1,4 @@
+interface:
+  display_name: "AMD ComfyUI Windows 引导部署"
+  short_description: "引导式检查 AMD 硬件、磁盘与虚拟内存并部署验证 ComfyUI"
+  default_prompt: "使用 $deploy-comfyui-amd-windows 引导我从零部署这台 AMD Windows 电脑上的 ComfyUI；先说明操作方式并只读检查，再让我选择用途、磁盘和虚拟内存方案。"
