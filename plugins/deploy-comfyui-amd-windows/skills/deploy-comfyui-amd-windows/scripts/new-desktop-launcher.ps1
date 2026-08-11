@@ -17,7 +17,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $root 'main.py') -PathType Leaf)) { 
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw "Python executable not found: $python" }
 
 $skillRoot = Split-Path -Parent $PSScriptRoot
-if (-not $IconPath) { $IconPath = Join-Path $skillRoot 'assets\comfyui.ico' }
+if (-not $IconPath) { $IconPath = Join-Path $skillRoot 'assets\community-node-setup.ico' }
 if (-not $LauncherPath) { $LauncherPath = Join-Path (Split-Path -Parent $root) 'Launch_ComfyUI_AMD_ROCm.cmd' }
 if (-not $ShortcutPath) { $ShortcutPath = Join-Path ([Environment]::GetFolderPath('Desktop')) 'ComfyUI AMD ROCm.lnk' }
 

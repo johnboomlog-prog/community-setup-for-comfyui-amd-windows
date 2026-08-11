@@ -1,4 +1,4 @@
-# AMD ComfyUI Windows Guided Deployment
+# Community Setup for ComfyUI on AMD Windows
 
 [中文](#中文说明) | [English](#english)
 
@@ -13,12 +13,14 @@ The plugin starts with read-only inspection, checks current AMD compatibility ev
 Users do not need Codex, another coding agent, Python, or Node.js to start the included GUI wizard. Download or clone the repository on Windows 10/11, then double-click:
 
 ```text
-plugins\deploy-comfyui-amd-windows\launcher\Start-AMD-ComfyUI-Deployment-Wizard.cmd
+plugins\deploy-comfyui-amd-windows\launcher\Start-Community-Setup-for-ComfyUI.cmd
 ```
 
 The wizard uses built-in Windows PowerShell 5.1 and follows the same safety gates as the Skill: read-only inventory first, live AMD compatibility evidence, workload/storage/page-file planning, explicit approval before downloads, a dry run, deployment, ROCm compute verification, real ComfyUI inference, and desktop-launcher creation.
 
 The initial GUI automates the Windows-native ROCm route. For WSL ROCm, DirectML, custom-node failures, or upstream compatibility-page changes, it preserves machine-readable reports that can be handed to Codex, Claude Code, Cursor, or another capable agent. Vibe Coding is therefore optional, not required.
+
+This is an unofficial community project and is not affiliated with, endorsed by, or sponsored by ComfyUI, AMD, Microsoft, or OpenAI. Its original node-path icon does not reuse their logos or wordmarks. Product names are used only to describe compatibility and purpose.
 
 ## Safety principles
 

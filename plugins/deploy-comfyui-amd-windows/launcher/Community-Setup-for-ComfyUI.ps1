@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 $pluginRoot = Split-Path -Parent $PSScriptRoot
 $skillRoot = Join-Path $pluginRoot 'skills\deploy-comfyui-amd-windows'
 $scriptsRoot = Join-Path $skillRoot 'scripts'
-$iconPath = Join-Path $skillRoot 'assets\comfyui.ico'
+$iconPath = Join-Path $PSScriptRoot 'assets\community-wizard.ico'
 $reportRoot = Join-Path $env:LOCALAPPDATA 'AMD-ComfyUI-Deployment-Wizard\reports'
 $hostPath = Join-Path $reportRoot 'amd-comfyui-host.json'
 $routePath = Join-Path $reportRoot 'amd-comfyui-route.json'
@@ -16,7 +16,7 @@ $missingFiles = @($requiredFiles | Where-Object { -not (Test-Path -LiteralPath $
 
 if ($SelfTest) {
     [ordered]@{
-        name = 'AMD ComfyUI Deployment Wizard'; windows = [bool]($env:OS -eq 'Windows_NT')
+        name = 'Community Setup for ComfyUI on AMD Windows'; windows = [bool]($env:OS -eq 'Windows_NT')
         powershell = $PSVersionTable.PSVersion.ToString(); apartmentState = [Threading.Thread]::CurrentThread.ApartmentState.ToString()
         pluginRoot = $pluginRoot; requiredFiles = $requiredFiles; missingFiles = $missingFiles
         valid = [bool](($env:OS -eq 'Windows_NT') -and $missingFiles.Count -eq 0)
@@ -74,10 +74,10 @@ function Show-PlanSummary {
     $belowSpaceBox.Enabled=[bool]($p.storage.spaceLevel -eq 'minimum-only')
 }
 
-$form=[Windows.Forms.Form]::new(); $form.Text='AMD ComfyUI Windows 独立部署向导'; $form.StartPosition='CenterScreen'; $form.Size=[Drawing.Size]::new(1040,760); $form.MinimumSize=[Drawing.Size]::new(900,680); $form.BackColor=[Drawing.Color]::FromArgb(246,248,250); $form.Font=[Drawing.Font]::new('Microsoft YaHei UI',9)
+$form=[Windows.Forms.Form]::new(); $form.Text='AMD Windows 社区部署向导 for ComfyUI'; $form.StartPosition='CenterScreen'; $form.Size=[Drawing.Size]::new(1040,760); $form.MinimumSize=[Drawing.Size]::new(900,680); $form.BackColor=[Drawing.Color]::FromArgb(246,248,250); $form.Font=[Drawing.Font]::new('Microsoft YaHei UI',9)
 if(Test-Path $iconPath){$form.Icon=[Drawing.Icon]::new($iconPath)}
-$title=[Windows.Forms.Label]::new(); $title.Text='AMD ComfyUI Windows 独立部署向导'; $title.Font=[Drawing.Font]::new('Microsoft YaHei UI',19,[Drawing.FontStyle]::Bold); $title.Location=[Drawing.Point]::new(24,18); $title.AutoSize=$true; $form.Controls.Add($title)
-$subtitle=[Windows.Forms.Label]::new(); $subtitle.Text='无需 Codex 或 Vibe Coding。先只读检测，再按官方证据规划；下载和安装前必须由你确认。'; $subtitle.Location=[Drawing.Point]::new(28,58); $subtitle.Size=[Drawing.Size]::new(930,24); $subtitle.ForeColor=[Drawing.Color]::FromArgb(75,85,99); $form.Controls.Add($subtitle)
+$title=[Windows.Forms.Label]::new(); $title.Text='AMD Windows 社区部署向导 for ComfyUI'; $title.Font=[Drawing.Font]::new('Microsoft YaHei UI',19,[Drawing.FontStyle]::Bold); $title.Location=[Drawing.Point]::new(24,18); $title.AutoSize=$true; $form.Controls.Add($title)
+$subtitle=[Windows.Forms.Label]::new(); $subtitle.Text='非官方社区项目，与 ComfyUI、AMD、Microsoft 或 OpenAI 无隶属关系。无需 Codex 或 Vibe Coding。'; $subtitle.Location=[Drawing.Point]::new(28,58); $subtitle.Size=[Drawing.Size]::new(930,24); $subtitle.ForeColor=[Drawing.Color]::FromArgb(75,85,99); $form.Controls.Add($subtitle)
 $settings=[Windows.Forms.GroupBox]::new(); $settings.Text='部署选择'; $settings.Location=[Drawing.Point]::new(24,92); $settings.Size=[Drawing.Size]::new(970,112); $settings.Anchor='Top,Left,Right'; $form.Controls.Add($settings)
 $installLabel=[Windows.Forms.Label]::new(); $installLabel.Text='安装目录'; $installLabel.Location=[Drawing.Point]::new(18,31); $installLabel.AutoSize=$true; $settings.Controls.Add($installLabel)
 $installRootBox=[Windows.Forms.TextBox]::new(); $installRootBox.Text=Get-DefaultInstallRoot; $installRootBox.Location=[Drawing.Point]::new(86,27); $installRootBox.Size=[Drawing.Size]::new(560,25); $settings.Controls.Add($installRootBox)

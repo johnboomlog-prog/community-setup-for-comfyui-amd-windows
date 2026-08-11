@@ -7,10 +7,9 @@ if not exist "%POWERSHELL_EXE%" (
   pause
   exit /b 1
 )
-"%POWERSHELL_EXE%" -NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File "%WIZARD_DIR%AMD-ComfyUI-Deployment-Wizard.ps1"
+"%POWERSHELL_EXE%" -NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File "%WIZARD_DIR%Community-Setup-for-ComfyUI.ps1"
 if errorlevel 1 (
   echo.
   echo The deployment wizard exited with an error. See the report directory for details.
   pause
 )
-

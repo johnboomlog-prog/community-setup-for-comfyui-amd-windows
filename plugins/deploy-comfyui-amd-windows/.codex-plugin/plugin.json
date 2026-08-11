@@ -12,7 +12,7 @@
   "keywords": ["comfyui", "amd", "radeon", "rocm", "windows", "ai"],
   "skills": "./skills/",
   "interface": {
-    "displayName": "AMD ComfyUI Windows Guided Deployment",
+    "displayName": "Community Setup for ComfyUI on AMD Windows",
     "shortDescription": "Inspect, plan, deploy, and verify ComfyUI on AMD Windows systems.",
     "longDescription": "Guides Radeon users from read-only hardware, storage, and page-file inspection through an evidence-based ROCm route, verified installation, real inference, and desktop launchers. Includes a standalone Windows GUI wizard that does not require a coding agent.",
     "developerName": "AMD ComfyUI Community",
