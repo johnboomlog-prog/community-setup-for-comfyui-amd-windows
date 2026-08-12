@@ -1,6 +1,6 @@
 {
   "name": "deploy-comfyui-amd-windows",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Guided, evidence-based ComfyUI deployment for AMD Radeon GPUs on Windows.",
   "author": {
     "name": "johnboomlog-prog",
@@ -14,7 +14,7 @@
   "interface": {
     "displayName": "Community Setup for ComfyUI on AMD Windows",
     "shortDescription": "Inspect, plan, deploy, and verify ComfyUI on AMD Windows systems.",
-    "longDescription": "Guides Radeon users from read-only hardware, storage, and page-file inspection through an evidence-based ROCm route, verified installation, real inference, and desktop launchers. Includes a standalone Windows GUI wizard that does not require a coding agent.",
+    "longDescription": "Guides Radeon users from read-only hardware, storage, and page-file inspection through an evidence-based ROCm route, verified installation, real inference, and instance-safe desktop start/stop tools. Includes a standalone Windows GUI wizard that does not require a coding agent.",
     "developerName": "AMD ComfyUI Community",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],

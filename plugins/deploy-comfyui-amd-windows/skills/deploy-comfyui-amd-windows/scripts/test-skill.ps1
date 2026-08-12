@@ -69,7 +69,9 @@ try {
     if ($ComfyUIRoot -and $PythonPath) {
         $cmd = Join-Path $tempRoot 'launcher.cmd'
         $lnk = Join-Path $tempRoot 'launcher.lnk'
-        powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'new-desktop-launcher.ps1') -ComfyUIRoot $ComfyUIRoot -PythonPath $PythonPath -LauncherPath $cmd -ShortcutPath $lnk | Out-Null
+        $stopScript = Join-Path $tempRoot 'stop-comfyui.ps1'
+        $stopLnk = Join-Path $tempRoot 'stop-comfyui.lnk'
+        powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'new-desktop-launcher.ps1') -ComfyUIRoot $ComfyUIRoot -PythonPath $PythonPath -LauncherPath $cmd -ShortcutPath $lnk -StopScriptPath $stopScript -StopShortcutPath $stopLnk | Out-Null
         $launcherCode = $LASTEXITCODE
         $bytes = if (Test-Path $cmd) { [IO.File]::ReadAllBytes($cmd) } else { @() }
         $text = if ($bytes.Count) { [Text.Encoding]::UTF8.GetString($bytes) } else { '' }
@@ -77,7 +79,11 @@ try {
         $crlf = ([regex]::Matches($text,"`r`n")).Count
         $bom = $bytes.Count -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
         $cachePinned = $text -match 'set "HF_HOME=%COMFYUI_ROOT%' -and $text -match 'set "TORCH_HOME=%COMFYUI_ROOT%' -and $text -match 'set "TRITON_CACHE_DIR=%COMFYUI_ROOT%'
-        Add-Check 'launcher-artifacts' ($launcherCode -eq 0 -and (Test-Path $cmd) -and (Test-Path $lnk) -and $lf -eq $crlf -and -not $bom -and $cachePinned) ([ordered]@{ crlfOnly = ($lf -eq $crlf); utf8Bom = $bom; shortcut = (Test-Path $lnk); cachesUnderComfyUI = $cachePinned })
+        $stopText = if (Test-Path $stopScript) { Get-Content -LiteralPath $stopScript -Raw -Encoding UTF8 } else { '' }
+        $stopTokens = $null; $stopErrors = $null
+        if ($stopText) { [Management.Automation.Language.Parser]::ParseFile($stopScript,[ref]$stopTokens,[ref]$stopErrors) | Out-Null }
+        $safeShutdown = $stopText -match 'Get-NetTCPConnection' -and $stopText -match 'ExpectedPython' -and $stopText -match 'queue_running' -and $stopText -match 'queue_pending' -and $stopText -match 'Stop-Process -Id \$target\.ProcessId'
+        Add-Check 'launcher-artifacts' ($launcherCode -eq 0 -and (Test-Path $cmd) -and (Test-Path $lnk) -and (Test-Path $stopScript) -and (Test-Path $stopLnk) -and $lf -eq $crlf -and -not $bom -and $cachePinned -and $stopErrors.Count -eq 0 -and $safeShutdown) ([ordered]@{ crlfOnly = ($lf -eq $crlf); utf8Bom = $bom; startShortcut = (Test-Path $lnk); stopScript = (Test-Path $stopScript); stopShortcut = (Test-Path $stopLnk); stopScriptParseErrors = @($stopErrors.Message); instanceSafeShutdown = $safeShutdown; cachesUnderComfyUI = $cachePinned })
     }
 } catch {
     Add-Check 'selftest-exception' $false $_.Exception.Message

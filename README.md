@@ -4,7 +4,7 @@
 
 这是一个面向 AMD Radeon（A 卡）Windows 用户的非官方社区部署工具。它会先检查显卡、内存、磁盘和虚拟内存，再根据 AMD 当前兼容信息制定方案；只有经过用户确认后才会下载、安装并验证 ComfyUI。
 
-> 当前状态：`0.2.0` 预览版。Windows 原生 ROCm 路线自动化程度最高。WSL ROCm 和 DirectML 目前以诊断、报告和智能体辅助处理为主。
+> 当前状态：`0.3.0` 预览版。Windows 原生 ROCm 路线自动化程度最高。WSL ROCm 和 DirectML 目前以诊断、报告和智能体辅助处理为主。
 
 ## 给普通用户：先看这里
 
@@ -25,9 +25,22 @@
 2. 下载 `Community-Setup-for-ComfyUI-AMD-Windows.exe`。
 3. 双击 EXE。首次运行会把内置向导文件释放到当前用户的 `%LOCALAPPDATA%\CommunitySetupForComfyUI\<版本号>`，不会把 ComfyUI 安装到这里。
 4. 按界面中的 `STEP 1 → STEP 5` 依次操作。先检测和规划，最后一步才会下载、安装。
-5. 安装和真实推理验证成功后，向导会在桌面创建 ComfyUI 启动器。以后直接双击桌面图标即可。
+5. 安装和真实推理验证成功后，向导会在桌面创建“启动”和“关闭”两个 ComfyUI 图标。
 
 界面会根据 Windows 显示语言自动选择中文或英文，也可以使用右上角按钮随时切换。
+
+### 安装以后怎么启动和关闭？
+
+桌面上会出现两个入口：
+
+| 桌面图标 | 用途 |
+|---|---|
+| `ComfyUI AMD ROCm` | 启动 ComfyUI；如果已经启动，则只打开浏览器，不重复运行 |
+| `Stop ComfyUI AMD ROCm` | 安全关闭本项目安装的 ComfyUI |
+
+关闭时直接双击 `Stop ComfyUI AMD ROCm`。关闭器会先检查是否仍有运行中或排队中的工作流；如果有，会明确警告并让你选择是否中断。它还会核对端口、Python 路径和启动命令，只关闭这一套安装，不会笼统结束电脑里的所有 `python.exe`。
+
+也可以在确认没有任务后，直接关闭标题为 `ComfyUI AMD ROCm` 的黑色启动窗口。普通用户不需要自己打开 PowerShell 输入关闭命令。
 
 ### 每一步到底在做什么？
 
@@ -83,7 +96,7 @@ codex plugin add deploy-comfyui-amd-windows@amd-comfyui-community
 - 不静默安装 GPU 驱动，不关闭杀毒软件或 UAC。
 - 新部署只使用新的或空的安装目录。
 - 下载来源限制为经过审查的 HTTPS 地址，并记录 SHA-256。
-- 成功标准包括 ROCm/HIP GPU 计算、ComfyUI API、真实工作流和桌面启动器测试，而不只是浏览器能打开。
+- 成功标准包括 ROCm/HIP GPU 计算、ComfyUI API、真实工作流以及桌面启动和安全关闭入口测试，而不只是浏览器能打开。
 
 ## 项目结构（开发者）
 
@@ -100,7 +113,7 @@ packaging/                    单文件 EXE/ZIP 构建脚本
 本地构建发布包：
 
 ```powershell
-.\packaging\build-release.ps1 -Version 0.2.0
+.\packaging\build-release.ps1 -Version 0.3.0
 ```
 
 输出位于 `dist/`。推送 `v*` 标签后，GitHub Actions 会自动构建 EXE、portable ZIP、SHA-256 清单并附加到 GitHub Release。
@@ -110,6 +123,8 @@ packaging/                    单文件 EXE/ZIP 构建脚本
 This is an unofficial community deployment tool for ComfyUI on AMD Radeon GPUs under Windows.
 
 Most users should open **Releases** and download `Community-Setup-for-ComfyUI-AMD-Windows.exe`. Double-click it and follow `STEP 1 → STEP 5`. No Codex, coding agent, Python, or Node.js is required to start the wizard. The wizard inspects the PC first and asks for explicit approval before downloads or system changes.
+
+After a successful deployment, use the `ComfyUI AMD ROCm` desktop shortcut to start or open ComfyUI, and `Stop ComfyUI AMD ROCm` to shut down this installation safely. The shutdown tool warns about active or queued jobs and verifies the port, Python executable, and launch command before stopping anything. It does not kill unrelated Python processes.
 
 If security software blocks the unsigned preview EXE, download `Community-Setup-for-ComfyUI-AMD-Windows-portable.zip`, extract it, and double-click `launcher\Start-Community-Setup-for-ComfyUI.cmd`. Verify files against `SHA256SUMS.txt` when appropriate.
 
