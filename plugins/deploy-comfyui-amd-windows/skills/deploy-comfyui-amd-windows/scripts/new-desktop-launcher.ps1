@@ -8,6 +8,7 @@ param(
     [string]$StopScriptPath,
     [string]$StopShortcutPath,
     [string]$IconPath,
+    [string]$StopIconPath,
     [string]$VcVarsPath,
     [string[]]$ExtraArgument = @()
 )
@@ -20,6 +21,7 @@ if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw "Python execut
 
 $skillRoot = Split-Path -Parent $PSScriptRoot
 if (-not $IconPath) { $IconPath = Join-Path $skillRoot 'assets\community-node-setup.ico' }
+if (-not $StopIconPath) { $StopIconPath = Join-Path $skillRoot 'assets\community-node-stop.ico' }
 if (-not $LauncherPath) { $LauncherPath = Join-Path (Split-Path -Parent $root) 'Launch_ComfyUI_AMD_ROCm.cmd' }
 if (-not $ShortcutPath) { $ShortcutPath = Join-Path ([Environment]::GetFolderPath('Desktop')) 'ComfyUI AMD ROCm.lnk' }
 if (-not $StopScriptPath) { $StopScriptPath = Join-Path (Split-Path -Parent $root) 'Stop_ComfyUI_AMD_ROCm.ps1' }
@@ -209,7 +211,7 @@ if ($PSCmdlet.ShouldProcess($stopShortcutFull, 'Create desktop shutdown shortcut
     $shortcut.Arguments = '-NoLogo -NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $stopScriptFull + '"'
     $shortcut.WorkingDirectory = $root
     $shortcut.Description = 'Safely stop this ComfyUI AMD ROCm instance'
-    if (Test-Path -LiteralPath $IconPath) { $shortcut.IconLocation = ([IO.Path]::GetFullPath($IconPath)) + ',0' }
+    if (Test-Path -LiteralPath $StopIconPath) { $shortcut.IconLocation = ([IO.Path]::GetFullPath($StopIconPath)) + ',0' }
     $shortcut.Save()
 }
-[ordered]@{ launcher = $launcherFull; shortcut = $shortcutFull; stopScript = $stopScriptFull; stopShortcut = $stopShortcutFull; icon = $IconPath; vcvars64 = $VcVarsPath; port = $Port } | ConvertTo-Json
+[ordered]@{ launcher = $launcherFull; shortcut = $shortcutFull; stopScript = $stopScriptFull; stopShortcut = $stopShortcutFull; icon = $IconPath; stopIcon = $StopIconPath; vcvars64 = $VcVarsPath; port = $Port } | ConvertTo-Json

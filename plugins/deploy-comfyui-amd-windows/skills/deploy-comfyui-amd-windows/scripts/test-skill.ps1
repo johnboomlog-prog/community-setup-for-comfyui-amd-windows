@@ -83,7 +83,11 @@ try {
         $stopTokens = $null; $stopErrors = $null
         if ($stopText) { [Management.Automation.Language.Parser]::ParseFile($stopScript,[ref]$stopTokens,[ref]$stopErrors) | Out-Null }
         $safeShutdown = $stopText -match 'Get-NetTCPConnection' -and $stopText -match 'ExpectedPython' -and $stopText -match 'queue_running' -and $stopText -match 'queue_pending' -and $stopText -match 'Stop-Process -Id \$target\.ProcessId'
-        Add-Check 'launcher-artifacts' ($launcherCode -eq 0 -and (Test-Path $cmd) -and (Test-Path $lnk) -and (Test-Path $stopScript) -and (Test-Path $stopLnk) -and $lf -eq $crlf -and -not $bom -and $cachePinned -and $stopErrors.Count -eq 0 -and $safeShutdown) ([ordered]@{ crlfOnly = ($lf -eq $crlf); utf8Bom = $bom; startShortcut = (Test-Path $lnk); stopScript = (Test-Path $stopScript); stopShortcut = (Test-Path $stopLnk); stopScriptParseErrors = @($stopErrors.Message); instanceSafeShutdown = $safeShutdown; cachesUnderComfyUI = $cachePinned })
+        $shell = New-Object -ComObject WScript.Shell
+        $startShortcut = if (Test-Path $lnk) { $shell.CreateShortcut($lnk) } else { $null }
+        $stopShortcut = if (Test-Path $stopLnk) { $shell.CreateShortcut($stopLnk) } else { $null }
+        $pairedIcons = $startShortcut -and $stopShortcut -and $startShortcut.IconLocation -match 'community-node-setup\.ico' -and $stopShortcut.IconLocation -match 'community-node-stop\.ico'
+        Add-Check 'launcher-artifacts' ($launcherCode -eq 0 -and (Test-Path $cmd) -and (Test-Path $lnk) -and (Test-Path $stopScript) -and (Test-Path $stopLnk) -and $lf -eq $crlf -and -not $bom -and $cachePinned -and $stopErrors.Count -eq 0 -and $safeShutdown -and $pairedIcons) ([ordered]@{ crlfOnly = ($lf -eq $crlf); utf8Bom = $bom; startShortcut = (Test-Path $lnk); stopScript = (Test-Path $stopScript); stopShortcut = (Test-Path $stopLnk); pairedStartStopIcons = $pairedIcons; stopScriptParseErrors = @($stopErrors.Message); instanceSafeShutdown = $safeShutdown; cachesUnderComfyUI = $cachePinned })
     }
 } catch {
     Add-Check 'selftest-exception' $false $_.Exception.Message

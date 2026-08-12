@@ -175,7 +175,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/new-desktop-laun
   -ComfyUIRoot <ComfyUI> -PythonPath <python.exe> -Port 8188
 ```
 
-The generator creates a CRLF start `.cmd`, a queue-aware stop `.ps1`, and separate desktop shortcuts using the included ComfyUI icon. The start tool health-checks `/system_stats`, avoids duplicate instances, loads `vcvars64.bat` when available, sets AMD variables only for the child process, preserves a visible log window, and opens the browser.
+The generator creates a CRLF start `.cmd`, a queue-aware stop `.ps1`, and separate desktop shortcuts. Use the paired icon assets: black background with a red A for Start, and red background with a black A for Stop. The start tool health-checks `/system_stats`, avoids duplicate instances, loads `vcvars64.bat` when available, sets AMD variables only for the child process, preserves a visible log window, and opens the browser.
 
 The stop tool must query `/queue` first and warn before interrupting active or pending work. It must resolve the listener on the configured port and verify the exact Python executable plus the `main.py --port` command line before stopping it. Never use an unscoped `taskkill /IM python.exe`, `Stop-Process -Name python`, or similar broad termination. If identity cannot be proven, refuse to stop and tell the user to close the named launcher console or request help.
 
