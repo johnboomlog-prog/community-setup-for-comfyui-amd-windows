@@ -10,6 +10,10 @@
 
 ## ComfyUI and launcher
 
+- The user does not know how to stop ComfyUI: regenerate the paired desktop tools with `new-desktop-launcher.ps1`; hand off both `ComfyUI AMD ROCm` and `Stop ComfyUI AMD ROCm`. Do not require a novice to type a PowerShell termination command.
+- The stop tool refuses because process identity does not match: do not weaken its checks or kill all Python processes. Confirm the configured port, Python path, and actual listener. If another installation owns the port, close that installation through its own launcher.
+- Active jobs are reported during shutdown: default to cancelling shutdown and let the work finish. Interrupt only after the user explicitly accepts losing the running or queued work.
+
 - Browser opens but API is absent: inspect console and port listener; UI launch is not health.
 - Core API works but nodes are missing: verify the exact Python, import logs, dependencies, and startup environment.
 - A bundle launcher exposes nodes but direct launch does not: compare environment variables, MSVC `PATH/INCLUDE/LIB`, working directory, and Python path.

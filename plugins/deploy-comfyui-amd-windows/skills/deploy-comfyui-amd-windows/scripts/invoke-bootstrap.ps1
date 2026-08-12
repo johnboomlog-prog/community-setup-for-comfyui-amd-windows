@@ -158,7 +158,9 @@ if (-not $SkipStarterProfile) {
 
 $launcher = Join-Path $root 'Launch_ComfyUI_AMD_ROCm.cmd'
 $shortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'ComfyUI AMD ROCm.lnk'
-& (Join-Path $PSScriptRoot 'new-desktop-launcher.ps1') -ComfyUIRoot $comfy -PythonPath $venvPython -Port ([int]$plan.port) -LauncherPath $launcher -ShortcutPath $shortcut
+$stopScript = Join-Path $root 'Stop_ComfyUI_AMD_ROCm.ps1'
+$stopShortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Stop ComfyUI AMD ROCm.lnk'
+& (Join-Path $PSScriptRoot 'new-desktop-launcher.ps1') -ComfyUIRoot $comfy -PythonPath $venvPython -Port ([int]$plan.port) -LauncherPath $launcher -ShortcutPath $shortcut -StopScriptPath $stopScript -StopShortcutPath $stopShortcut
 if ($LASTEXITCODE -ne 0) { throw 'Launcher generation failed.' }
 
 Start-Process -FilePath $launcher -WorkingDirectory $comfy
@@ -186,6 +188,8 @@ $report = [ordered]@{
     comfyUICommit = $plan.comfyUI.commit
     launcher = $launcher
     shortcut = $shortcut
+    stopScript = $stopScript
+    stopShortcut = $stopShortcut
     artifactManifest = (Join-Path $root 'artifact-manifest.json')
     starterProfilePassed = [bool](-not $SkipStarterProfile)
 }

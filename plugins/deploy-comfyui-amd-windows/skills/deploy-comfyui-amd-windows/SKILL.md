@@ -1,6 +1,6 @@
 ---
 name: deploy-comfyui-amd-windows
-description: "Guide a Radeon/A-card Windows user through an interactive, evidence-based ComfyUI deployment: inspect the computer, explain and collect workload/storage/page-file choices, select native ROCm, WSL ROCm, or an explicitly accepted fallback, install or repair the backend, verify real inference, and create a desktop launcher. Use for zero-to-working deployments, AMD bundle migration, AMD node compatibility, or broken ROCm/HIP recovery. Do not use for NVIDIA CUDA deployments."
+description: "Guide a Radeon/A-card Windows user through an interactive, evidence-based ComfyUI deployment: inspect the computer, explain and collect workload/storage/page-file choices, select native ROCm, WSL ROCm, or an explicitly accepted fallback, install or repair the backend, verify real inference, and create safe desktop start/stop tools. Use for zero-to-working deployments, AMD bundle migration, AMD node compatibility, launcher/shutdown handoff, or broken ROCm/HIP recovery. Do not use for NVIDIA CUDA deployments."
 ---
 
 # Deploy ComfyUI on AMD Windows
@@ -166,7 +166,7 @@ The gate passes only if `/system_stats`, `/queue`, and `/object_info` respond an
 
 Read [references/custom-nodes.md](references/custom-nodes.md). Install one node family at a time at a pinned revision. Restart, query `/object_info`, and execute the smallest representative workflow after each addition. Capture logs and timing. If a HIP kernel error occurs, restart ComfyUI before further tests because the process context may remain poisoned.
 
-### 8. Create and verify the launcher
+### 8. Create and verify start and stop tools
 
 Generate a launcher only after the baseline API passes:
 
@@ -175,11 +175,13 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/new-desktop-laun
   -ComfyUIRoot <ComfyUI> -PythonPath <python.exe> -Port 8188
 ```
 
-The generator creates a CRLF `.cmd` plus a `.lnk` using the included ComfyUI icon. The launcher health-checks `/system_stats`, avoids duplicate instances, loads `vcvars64.bat` when available, sets AMD variables only for the child process, preserves a visible log window, and opens the browser.
+The generator creates a CRLF start `.cmd`, a queue-aware stop `.ps1`, and separate desktop shortcuts using the included ComfyUI icon. The start tool health-checks `/system_stats`, avoids duplicate instances, loads `vcvars64.bat` when available, sets AMD variables only for the child process, preserves a visible log window, and opens the browser.
+
+The stop tool must query `/queue` first and warn before interrupting active or pending work. It must resolve the listener on the configured port and verify the exact Python executable plus the `main.py --port` command line before stopping it. Never use an unscoped `taskkill /IM python.exe`, `Stop-Process -Name python`, or similar broad termination. If identity cannot be proven, refuse to stop and tell the user to close the named launcher console or request help.
 
 Keep Hugging Face, Torch, and Triton caches under the selected ComfyUI root so later model/node activity cannot silently fill the system drive.
 
-Launch it once, wait for health, rerun the API test, close ComfyUI normally, then launch it a second time. A deployment is complete only when both cold starts succeed and a second click does not create another instance.
+Launch it once, wait for health, rerun the API test, close it with the generated stop shortcut while the queue is empty, then launch it a second time. A deployment is complete only when both cold starts succeed, the stop tool closes only the intended instance, and a second start click does not create another instance.
 
 ### 9. Hand off
 
@@ -197,4 +199,4 @@ Write a short deployment report containing exact GPU/driver/Windows/Python/PyTor
 - `scripts/invoke-workflow-smoke.ps1`: submit and wait for a real API workflow, failing on execution errors or timeout.
 - `scripts/test-skill.ps1`: run the portable structural, ROCm, API, workflow, plan, and launcher self-test suite.
 - `scripts/download-verified.ps1`: checksum-gated downloader.
-- `scripts/new-desktop-launcher.ps1`: deterministic launcher and desktop shortcut generator.
+- `scripts/new-desktop-launcher.ps1`: deterministic, instance-scoped desktop start/stop tool generator.
