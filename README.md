@@ -4,7 +4,7 @@
 
 这是一个面向 AMD Radeon（A 卡）Windows 用户的非官方社区部署工具。它会先检查显卡、内存、磁盘和虚拟内存，再根据 AMD 当前兼容信息制定方案；只有经过用户确认后才会下载、安装并验证 ComfyUI。
 
-> 当前状态：`0.3.0` 预览版。Windows 原生 ROCm 路线自动化程度最高。WSL ROCm 和 DirectML 目前以诊断、报告和智能体辅助处理为主。
+> 当前状态：`0.3.1` 预览版。Windows 原生 ROCm 路线自动化程度最高。WSL ROCm 和 DirectML 目前以诊断、报告和智能体辅助处理为主。
 
 ## 给普通用户：先看这里
 
@@ -37,6 +37,8 @@
 |---|---|
 | `ComfyUI AMD ROCm` | 启动 ComfyUI；如果已经启动，则只打开浏览器，不重复运行 |
 | `Stop ComfyUI AMD ROCm` | 安全关闭本项目安装的 ComfyUI |
+
+两个图标采用成对设计：启动是黑底红 A，关闭是红底黑 A，方便新用户不用读文字也能快速区分。
 
 关闭时直接双击 `Stop ComfyUI AMD ROCm`。关闭器会先检查是否仍有运行中或排队中的工作流；如果有，会明确警告并让你选择是否中断。它还会核对端口、Python 路径和启动命令，只关闭这一套安装，不会笼统结束电脑里的所有 `python.exe`。
 
@@ -113,7 +115,7 @@ packaging/                    单文件 EXE/ZIP 构建脚本
 本地构建发布包：
 
 ```powershell
-.\packaging\build-release.ps1 -Version 0.3.0
+.\packaging\build-release.ps1 -Version 0.3.1
 ```
 
 输出位于 `dist/`。推送 `v*` 标签后，GitHub Actions 会自动构建 EXE、portable ZIP、SHA-256 清单并附加到 GitHub Release。
@@ -125,6 +127,8 @@ This is an unofficial community deployment tool for ComfyUI on AMD Radeon GPUs u
 Most users should open **Releases** and download `Community-Setup-for-ComfyUI-AMD-Windows.exe`. Double-click it and follow `STEP 1 → STEP 5`. No Codex, coding agent, Python, or Node.js is required to start the wizard. The wizard inspects the PC first and asks for explicit approval before downloads or system changes.
 
 After a successful deployment, use the `ComfyUI AMD ROCm` desktop shortcut to start or open ComfyUI, and `Stop ComfyUI AMD ROCm` to shut down this installation safely. The shutdown tool warns about active or queued jobs and verifies the port, Python executable, and launch command before stopping anything. It does not kill unrelated Python processes.
+
+The paired icon design uses a red A on black for Start and a black A on red for Stop, making the two actions visually distinct at a glance.
 
 If security software blocks the unsigned preview EXE, download `Community-Setup-for-ComfyUI-AMD-Windows-portable.zip`, extract it, and double-click `launcher\Start-Community-Setup-for-ComfyUI.cmd`. Verify files against `SHA256SUMS.txt` when appropriate.
 
